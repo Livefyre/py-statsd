@@ -24,9 +24,9 @@ stats.timers.%(key)s.upper_%(pct_threshold)s %(max_threshold)s %(ts)s
 
 class Server(object):
 
-    def __init__(self, pct_threshold=90, debug=False, graphite_host='localhost', graphite_port=2003):
+    def __init__(self, pct_threshold=90, debug=False, graphite_host='localhost', graphite_port=2003, flush_interval=10000):
         self.buf = 1024
-        self.flush_interval = 10000
+        self.flush_interval = flush_interval
         self.pct_threshold = pct_threshold
         self.graphite_host = graphite_host
         self.graphite_port = graphite_port
@@ -34,7 +34,6 @@ class Server(object):
 
         self.counters = {}
         self.timers = {}
-        self.flusher = 0
 
     
     def process(self, data):
@@ -129,6 +128,9 @@ class Server(object):
         signal.signal(signal.SIGINT, signal_handler)
         
         self._set_timer()
+        
+        print "Listening on %s, connecting to graphite at %s:%d..." % (port, graphite_host, graphite_port)
+        
         while 1:
             data, addr = self._sock.recvfrom(self.buf)
             self.process(data)
@@ -138,16 +140,21 @@ class Server(object):
         self._sock.close()
         
 
-if __name__ == '__main__':
+def main(server_cls=Server):
     import sys
     import argparse
     parser = argparse.ArgumentParser()
     parser.add_argument('-d', '--debug', dest='debug', action='store_true', help='debug mode', default=False)
     parser.add_argument('-n', '--name', dest='name', help='hostname to run on', default='')
     parser.add_argument('-p', '--port', dest='port', help='port to run on', type=int, default=8125)
+    parser.add_argument('--flush-interval', dest='flush_interval', help='period to flush data to graphite in ms', type=int, default=10000)
     parser.add_argument('--graphite-port', dest='graphite_port', help='port to connect to graphite on', type=int, default=2003)
     parser.add_argument('--graphite-host', dest='graphite_host', help='host to connect to graphite on', type=str, default='localhost')
     parser.add_argument('-t', '--pct', dest='pct', help='stats pct threshold', type=int, default=90)
     options = parser.parse_args(sys.argv[1:])
 
-    Server(pct_threshold=options.pct, debug=options.debug).serve(options.name, options.port, options.graphite_host, options.graphite_port)
+    server = server_cls(pct_threshold=options.pct, debug=options.debug, flush_interval=options.flush_interval)
+    server.serve(options.name, options.port, options.graphite_host, options.graphite_port)
+
+if __name__ == '__main__':
+    main(Server)
