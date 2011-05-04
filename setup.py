@@ -18,4 +18,5 @@ setup(
     classifiers=[
         "License :: OSI Approved :: BSD License",
     ],
+    entry_points = {'console_scripts': ['pystatsd-server=pystatsd.server:main']}
 )
